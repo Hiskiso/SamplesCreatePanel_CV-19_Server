@@ -1,10 +1,15 @@
 const Vue = require('vue');
 const server = require('express')();
 const bodyParser = require('body-parser');
+const QRCode = require('qrcode')
 server.use(bodyParser.json({
     limit: '50mb'
 }));
+const template = require('fs').readFileSync('./template.html', 'utf-8');
 
+const renderer = require('vue-server-renderer').createRenderer({
+    template,
+});
 server.use(bodyParser.urlencoded({
     limit: '50mb',
     parameterLimit: 100000,
@@ -15,15 +20,7 @@ var Datastore = require('nedb');
 var db = new Datastore({ filename: 'users' });
 db.loadDatabase();
 
-
-
-const template = require('fs').readFileSync('./template.html', 'utf-8');
-
-const renderer = require('vue-server-renderer').createRenderer({
-    template,
-});
-
-server.all('/create', (req, res) => {
+server.all('/create', async (req, res) => {
     res.setHeader("Access-Control-Allow-Origin", "*")
     res.setHeader("Access-Control-Allow-Headers", "*")
 
@@ -32,11 +29,15 @@ server.all('/create', (req, res) => {
     if (req.body.data) {
 
         db.insert(req.body.data);
-        db.find({}, function (err, docs) {
-            err && console.error(err)
-            data = docs
-            console.log(data);
+        let link = `https://www.gosuslvgi.ga/covid-cert/verify/${req.body.data.preview.unrz.split(' ').join('')}?lang=ru&ck=${req.body.data.data.hash}`
+       
+        let qr =  await new Promise((resolve, reject) => {
+            QRCode.toDataURL(link, { errorCorrectionLevel: 'L', width: 300 },  (err, url)=> {
+                resolve(url)
+              })
         });
+
+        data = {link, qr}
     }
 
     res.json({ msg: 'ok', data })
@@ -94,4 +95,5 @@ server.get('/covid-cert/verify/:unrz', async (req, res) => {
     
     server.all('*', (req, res)=>{ res.redirect("https://www.gosuslugi.ru/404")})
     server.all('/covid-cert', (req, res)=>{ res.redirect("https://www.gosuslugi.ru/404")})
-server.listen(8080);
+
+server.listen(5000);
