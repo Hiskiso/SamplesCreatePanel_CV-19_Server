@@ -5,3 +5,4 @@
  - git clone this repo
  - `npm i` 
  - `npm run start`
+ - go to public/build folder and open index.html
