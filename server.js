@@ -5,7 +5,7 @@ const QRCode = require('qrcode')
 server.use(bodyParser.json({
     limit: '50mb'
 }));
-const template = require('fs').readFileSync('./template.html', 'utf-8');
+const template = process.env.NODE_ENV == 'development' ? require('fs').readFileSync('./dev_template.html', 'utf-8') : require('fs').readFileSync('./prod_template.html', 'utf-8')
 
 const renderer = require('vue-server-renderer').createRenderer({
     template,
@@ -18,9 +18,10 @@ server.use(bodyParser.urlencoded({
 
 var Datastore = require('nedb');
 var db = new Datastore({ filename: 'users' });
-db.loadDatabase();
+db.loadDatabase(); 
 
 server.all('/create', async (req, res) => {
+
     res.setHeader("Access-Control-Allow-Origin", "*")
     res.setHeader("Access-Control-Allow-Headers", "*")
 
@@ -45,7 +46,6 @@ server.all('/create', async (req, res) => {
 
 
 server.get('/covid-cert/verify/:unrz', async (req, res) => {
-    
     let certs = await new Promise((resolve, reject) => {
         db.find({}, function (err, docs) {
             resolve(docs);
@@ -67,12 +67,8 @@ server.get('/covid-cert/verify/:unrz', async (req, res) => {
     res.redirect("https://www.gosuslugi.ru/404")
 }
 
-
-
-    
-
     const context = {
-        json: `let strjson = \`${JSON.stringify(cert)}\``
+        json: `window.prdcrt = \`${JSON.stringify(cert)}\`;`
     };
     
     const app = new Vue({
@@ -91,9 +87,11 @@ server.get('/covid-cert/verify/:unrz', async (req, res) => {
             }
             res.end(html);
         });
+
+
+
+    
     })
     
     server.all('*', (req, res)=>{ res.redirect("https://www.gosuslugi.ru/404")})
-    server.all('/covid-cert', (req, res)=>{ res.redirect("https://www.gosuslugi.ru/404")})
-
-server.listen(5000);
+server.listen(5000, ()=>{console.log("Server started at port 5000...");});
